@@ -127,7 +127,7 @@ export default defineComponent({
 
   data: () => ({
     damageSource: 'その他',
-    damage: 0,
+    damage: 100,
     armor: 0,
     armorPercent: 0,
     armorToughness: 0,
