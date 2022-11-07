@@ -5,6 +5,12 @@ import BasePage from '@/components/BasePage.vue'
 <template>
   <base-page>
     <v-select
+      v-model="type"
+      :items="Object.values(types)"
+      label="計算式"
+      @update:modelValue="onUpdate()"
+    />
+    <v-select
       v-model="damageSource"
       :items="Object.keys(damageSources)"
       label="ダメージの種類"
@@ -100,6 +106,7 @@ import BasePage from '@/components/BasePage.vue'
 import { defineComponent } from 'vue'
 import CombatRules from '@/combat-rules'
 import DamageSource from '@/damage-source'
+import { findValue } from '@/util'
 
 export default defineComponent({
   name: 'App',
@@ -109,16 +116,19 @@ export default defineComponent({
     try {
       const data = JSON.parse(window.atob(location.hash.substring(1)))
       console.log(data)
-      if (data.damageSource && Object.values(this.damageSources).includes(data.damageSource)) {
-        this.damageSource = Object.entries(this.damageSources).filter((e) => e[1] === data.damageSource)[0][0]
+      if (data.type && data.type in this.types) {
+        this.type = this.types[data.type]
       }
-      this.damage = data.damage || 0
-      this.armor = data.armor || 0
-      this.armorPercent = data.armorPercent || 0
-      this.armorToughness = data.armorToughness || 0
-      this.armorToughnessPercent = data.armorToughnessPercent || 0
-      this.resistance = data.resistance || 0
-      this.protection = data.protection || 0
+      if (findValue(this.damageSources, data.damageSource)) {
+        this.damageSource = findValue(this.damageSources, data.damageSource)
+      }
+      this.damage = data.damage
+      this.armor = data.armor
+      this.armorPercent = data.armorPercent
+      this.armorToughness = data.armorToughness
+      this.armorToughnessPercent = data.armorToughnessPercent
+      this.resistance = data.resistance
+      this.protection = data.protection
     } catch (e) {
       console.info('Failed to load data from hash', e)
     }
@@ -126,6 +136,7 @@ export default defineComponent({
   },
 
   data: () => ({
+    type: 'バニラ',
     damageSource: 'その他',
     damage: null,
     armor: null,
@@ -139,6 +150,10 @@ export default defineComponent({
     toast: false,
     toastMessage: '',
     shareUrl: '',
+    types: {
+      'vanilla': 'バニラ',
+      'life': 'Lifeサーバー',
+    },
     // These values must be resolvable with DamageSource#valueOf (and this data should not be modified)
     damageSources: {
       'その他': 'Generic',
@@ -172,24 +187,29 @@ export default defineComponent({
 
   methods: {
     onUpdate() {
+      const type = findValue(this.types, this.type) || 'vanilla'
       const damageSource = DamageSource.valueOf(this.damageSources[this.damageSource])
-      console.log(damageSource)
       const damage = this.damage || 0
-      const rawArmor = Math.max(0, this.armor || 0)
+      const rawArmor = this.armor || 0
       const rawArmorPercent = this.armorPercent || 0
-      const rawArmorToughness = Math.max(0, this.armorToughness || 0)
+      const rawArmorToughness = this.armorToughness || 0
       const rawArmorToughnessPercent = this.armorToughnessPercent || 0
-      const armor = rawArmor + (rawArmorPercent / 100 * rawArmor)
-      const armorToughness = rawArmorToughness + (rawArmorToughnessPercent / 100 * rawArmorToughness)
+      const armor = Math.max(0, rawArmor + (rawArmorPercent / 100 * rawArmor))
+      const armorToughness = Math.max(0, rawArmorToughness + (rawArmorToughnessPercent / 100 * rawArmorToughness))
       const resistance = this.resistance || 0
       const protection = this.protection || 0
-      this.finalDamage = CombatRules.calculateFinalDamage(damageSource, damage, armor, armorToughness, resistance, protection)
+      if (type === 'life') {
+        this.finalDamage = CombatRules.calculateFinalDamageLife(damageSource, damage, armor, armorToughness, resistance, protection)
+      } else {
+        this.finalDamage = CombatRules.calculateFinalDamageVanilla(damageSource, damage, armor, armorToughness, resistance, protection)
+      }
       if (damage === 0) {
         this.reductionPercent = 0
       } else {
         this.reductionPercent = (1 - this.finalDamage / damage) * 100
       }
       location.hash = window.btoa(JSON.stringify({
+        type,
         damageSource: this.damageSources[this.damageSource],
         damage,
         armor: rawArmor,

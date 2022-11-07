@@ -5,13 +5,26 @@ export default class CombatRules {
     return Math.max(min, Math.min(value, max))
   }
 
-  public static getDamageAfterAbsorb(damage: number, armor: number, armorToughness: number): number {
+  public static getLifeDamageAfterAbsorb(damage: number, armor: number, armorToughness: number): number {
     return (damage * (1.0 / (armor * 0.025 + 1) / (armorToughness * 0.025 + 1)))
   }
 
-  public static getDamageAfterAbsorbWithDS(damageSource: DamageSource, damage: number, armor: number, armorToughness: number): number {
+  public static getLifeDamageAfterAbsorbWithDS(damageSource: DamageSource, damage: number, armor: number, armorToughness: number): number {
     if (!damageSource.bypassArmor) {
-      return this.getDamageAfterAbsorb(Math.fround(damage), Math.fround(armor), Math.fround(armorToughness))
+      return this.getLifeDamageAfterAbsorb(Math.fround(damage), Math.fround(armor), Math.fround(armorToughness))
+    }
+    return damage
+  }
+
+  public static getVanillaDamageAfterAbsorb(damage: number, armor: number, armorToughness: number): number {
+    const f4 = 2.0 + armorToughness / 4.0
+    const f5 = this.clamp(armor - damage / f4, armor * 0.2, 20.0)
+    return damage * (1.0 - f5 / 25.0)
+  }
+
+  public static getVanillaDamageAfterAbsorbWithDS(damageSource: DamageSource, damage: number, armor: number, armorToughness: number): number {
+    if (!damageSource.bypassArmor) {
+      return this.getLifeDamageAfterAbsorb(Math.fround(damage), Math.fround(Math.min(armor, 30)), Math.fround(Math.min(armorToughness, 20)))
     }
     return damage
   }
@@ -45,7 +58,7 @@ export default class CombatRules {
     }
   }
 
-  public static calculateFinalDamage(
+  public static calculateFinalDamageLife(
     damageSource: DamageSource,
     damage: number,
     armor: number,
@@ -53,7 +66,19 @@ export default class CombatRules {
     resistanceLevel: number,
     protectionLevel: number,
   ): number {
-    const damageAfterAbsorb = this.getDamageAfterAbsorbWithDS(damageSource, damage, armor, armorToughness)
+    const damageAfterAbsorb = this.getLifeDamageAfterAbsorbWithDS(damageSource, damage, armor, armorToughness)
+    return this.getDamageAfterMagicAbsorbWithDS(damageSource, damageAfterAbsorb, resistanceLevel, protectionLevel)
+  }
+
+  public static calculateFinalDamageVanilla(
+    damageSource: DamageSource,
+    damage: number,
+    armor: number,
+    armorToughness: number,
+    resistanceLevel: number,
+    protectionLevel: number,
+  ): number {
+    const damageAfterAbsorb = this.getVanillaDamageAfterAbsorbWithDS(damageSource, damage, armor, armorToughness)
     return this.getDamageAfterMagicAbsorbWithDS(damageSource, damageAfterAbsorb, resistanceLevel, protectionLevel)
   }
 }
