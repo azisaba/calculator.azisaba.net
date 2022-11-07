@@ -25,6 +25,7 @@ export default defineConfig({
         'main': resolve(__dirname, 'index.html'),
         'damage-calculator': resolve(__dirname, 'pages/damage-calculator/index.html'),
         'life-damage-calculator': resolve(__dirname, 'pages/life-damage-calculator/index.html'),
+        'life-drops-calculator': resolve(__dirname, 'pages/life-drops-calculator/index.html'),
       },
     },
   },
